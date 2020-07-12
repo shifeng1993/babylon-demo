@@ -16,6 +16,8 @@ import {HemisphericLight} from "@babylonjs/core/Lights/hemisphericLight"; // 半
 import {SphereBuilder} from "@babylonjs/core/Meshes/Builders/sphereBuilder";
 import {BoxBuilder} from "@babylonjs/core/Meshes/Builders/boxBuilder";
 import {GroundBuilder} from "@babylonjs/core/Meshes/Builders/groundBuilder";
+import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
+
 // 材质
 import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
 // 动画
@@ -211,7 +213,17 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
 
     // Enable Collisions
     scene.collisionsEnabled = true;
+    const importResult = await SceneLoader.ImportMeshAsync(
+      "",
+      "",
+      require('../../assets/glb/samsung-controller.glb'),
+      scene,
+      undefined,
+      ".glb"
+    );
 
+    // just scale it so we can see it better
+    importResult.meshes[0].scaling.scaleInPlace(10);
     //Then apply collisions and gravity to the active camera
     // camera.checkCollisions = true;
     // //finally, say which mesh will be collisionable

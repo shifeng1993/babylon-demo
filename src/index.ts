@@ -1,5 +1,7 @@
 import {Engine} from "@babylonjs/core/Engines/engine";
 import {getSceneModuleWithName} from "./createScene";
+import {LoadingScreen, ILoadingScreen} from './components/Loading';
+import './index.less';
 
 const getModuleToLoad = (): string | undefined => {
   // ATM using location.search
@@ -10,7 +12,7 @@ const getModuleToLoad = (): string | undefined => {
   }
 }
 
-export const babylonInit = async (): Promise<void> => {
+export const babylonInit = async (): Promise<Engine> => {
   // get the module to load
   const moduleName = getModuleToLoad();
   const createSceneModule = await getSceneModuleWithName(moduleName);
@@ -22,7 +24,14 @@ export const babylonInit = async (): Promise<void> => {
   // Generate the BABYLON 3D engine
   const engine = new Engine(canvas, true);
 
-  // Create the scene
+  // loading加在引擎上
+  const loadingScreen: ILoadingScreen = new LoadingScreen('loadiung');
+  engine.loadingScreen = loadingScreen;
+
+  //创建场景前开启loading
+  engine.displayLoadingUI();
+
+  // 创建场景
   const scene = await createSceneModule.createScene(engine, canvas);
 
   // Register a render loop to repeatedly render the scene
@@ -34,6 +43,7 @@ export const babylonInit = async (): Promise<void> => {
   window.addEventListener("resize", function () {
     engine.resize();
   });
+  return engine;
 }
 
 babylonInit().then(() => {
