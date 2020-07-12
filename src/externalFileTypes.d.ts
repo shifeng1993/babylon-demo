@@ -6,6 +6,7 @@ declare module '*.env';
 // 3D types
 declare module '*.glb';
 declare module '*.stl';
+declare module '*.babylon';
 
 // Physics
 declare module "ammo.js";

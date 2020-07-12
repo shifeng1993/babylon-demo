@@ -4,9 +4,10 @@
     "description": "A simple scene using Babylon.js, typescript and webpack",
     "main": "index.ts",
     "dependencies": {
-        "@babylonjs/core": "^4.1.0",
-        "@babylonjs/loaders": "^4.1.0",
-        "ammo.js": "0.0.10"
+        "@babylonjs/core": "^4.2.0-alpha.23",
+        "@babylonjs/gui": "^4.1.0",
+        "@babylonjs/loaders": "^4.2.0-alpha.23",
+        "ammo.js": "github:kripken/ammo.js#master"
     },
     "devDependencies": {
         "@typescript-eslint/eslint-plugin": "^3.5.0",

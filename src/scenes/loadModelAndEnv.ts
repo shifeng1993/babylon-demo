@@ -11,12 +11,14 @@ import { EnvironmentHelper } from "@babylonjs/core/Helpers/environmentHelper";
 // required imports
 import "@babylonjs/core/Loading/loadingScreen";
 import "@babylonjs/loaders/glTF";
+import "@babylonjs/loaders/OBJ"
+import "@babylonjs/loaders/STL";
 import "@babylonjs/core/Materials/standardMaterial";
 import "@babylonjs/core/Materials/Textures/Loaders/envTextureLoader";
 
 
 // digital assets
-import controllerModel from "../../assets/glb/samsung-controller.glb";
+import controllerModel from "../../assets/glb/sm102.glb";
 import roomEnvironment from "../../assets/environment/room.env"
 
 export class LoadModelAndEnvScene implements CreateSceneClass {
