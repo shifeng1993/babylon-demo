@@ -13,13 +13,21 @@ import {PointLight} from "@babylonjs/core/Lights/pointLight";   // 点光源
 import {SpotLight} from "@babylonjs/core/Lights/spotLight";   // 射灯
 import {HemisphericLight} from "@babylonjs/core/Lights/hemisphericLight"; // 半球光
 // 模型
+import {AbstractMesh} from '@babylonjs/core/Meshes/abstractMesh';
 import {SphereBuilder} from "@babylonjs/core/Meshes/Builders/sphereBuilder";
 import {BoxBuilder} from "@babylonjs/core/Meshes/Builders/boxBuilder";
 import {GroundBuilder} from "@babylonjs/core/Meshes/Builders/groundBuilder";
 // 材质
 import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
+import {FresnelParameters} from '@babylonjs/core/Materials/fresnelParameters';
 // 动画
 import {Animation} from "@babylonjs/core/Animations";
+import {CircleEase, EasingFunction} from '@babylonjs/core/Animations/easing';
+
+// 事件
+import {PointerEventTypes} from '@babylonjs/core/Events/pointerEvents'; // 鼠标事件
+import {ActionManager} from '@babylonjs/core/Actions/actionManager';
+import {ExecuteCodeAction} from '@babylonjs/core/Actions/directActions';
 // 粒子系统
 import {ParticleSystem} from '@babylonjs/core/Particles';
 
@@ -32,11 +40,15 @@ import {Texture} from "@babylonjs/core/Materials/Textures/texture";
 import {addLabelToMesh} from "../gui";
 import grassTextureUrl from "../../assets/grass.jpg";
 import {Color4, Color3} from "@babylonjs/core/Maths/math.color";
-import {SceneLoader} from "@babylonjs/core/Loading/sceneLoader";
+// import {SceneLoader} from "@babylonjs/core/Loading/sceneLoader";
 
-import "@babylonjs/loaders/glTF";
-import controllerModel from "../../assets/glb/jigui.glb";
+// import "@babylonjs/loaders/glTF";
+// import controllerModel from "../../assets/glb/cabinet.glb";
 
+import {Ground} from '../components/mode/Ground'; // 地面
+import {Cabinet} from '../components/mode/Cabinet';  // 机柜
+
+import xary from '../components/materials/xray';  // x光材质
 
 export class DefaultSceneWithTexture implements CreateSceneClass {
 
@@ -47,199 +59,151 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
     // 创建一个场景对象
     const scene = new Scene(engine);
 
-    // 展示loading
-
-    // This creates and positions a free camera (non-mesh)
-    // var camera = new UniversalCamera("UniversalCamera", new Vector3(0, 0, -10), scene);
-    // const camera = new ArcRotateCamera(
-    //   "my first camera",
-    //   0,
-    //   Math.PI / 3,
-    //   10,
-    //   new Vector3(0, 0, 0),
-    //   scene
-    // );
-    // // This targets the camera to scene origin
-    // camera.setTarget(Vector3.Zero());
-
-    // camera.lowerBetaLimit = 0.1;
-    // camera.upperBetaLimit = (Math.PI / 2) * 0.9;
-    // camera.lowerRadiusLimit = 5;
-    // camera.upperRadiusLimit = 50;
-    // // 允许摄像机对画布默认事件的操作
-    // camera.attachControl(canvas, true);
-
-    var camera = new FollowCamera("FollowCam", new Vector3(0, 0, 0), scene);
-
-    // 相机到目标的距离
-    camera.radius = 10;
-
-    // 相机的目标高度高于目标的原点
-    camera.heightOffset = 10;
-
-    // 摄像机绕xy绕目标原点旋转
-    camera.rotationOffset = Math.PI/2;
-
-    // 当前位置到目标位置的加速度
-    camera.cameraAcceleration = 0.005
-
-    // 停止加速的速度
-    camera.maxCameraSpeed = 5
-
-    // This attaches the camera to the canvas
-    camera.attachControl(canvas, true);
-
-    // This creates a light, aiming 0,1,0 - to the sky (non-mesh)
-    const light = new HemisphericLight("light", new Vector3(0, 1, 0), scene);
-    // var light = new SpotLight("spotLight", new Vector3(0, 30, -10), new Vector3(0, -1, 0), Math.PI / 3, 2, scene);
-    // Default intensity is 1. Let's dim the light a small amount
-    light.intensity = 1;
-
-    // // Our built-in 'sphere' shape.
-    // const sphere = SphereBuilder.CreateSphere(
-    //   "sphere",
-    //   {diameter: 2, segments: 32},
-    //   scene
-    // );
-
-    // const box = BoxBuilder.CreateBox(
-    //   "box",
-    //   {height: 0, width: 2, depth: 0.5},
-    //   scene
-    // );
-
-    // box.position = new Vector3(0, 1, 1);
-    // box.rotation = new Vector3(Math.PI / 2, Math.PI / 2 / 3,)
-    // // Move the sphere upward 1/2 its height
-    // sphere.position.y = 1;
-
-    // Our built-in 'ground' shape.
-    const ground = GroundBuilder.CreateGround(
-      "ground",
-      {width: 10, height: 6},
+    /****************************** 相机部分 ********************************/
+    const camera = new ArcRotateCamera(
+      "my first camera",
+      0,
+      Math.PI / 3,
+      50,   // 相机半径
+      new Vector3(0, 0, 0),
       scene
     );
+    // 设置target到原点
+    camera.setTarget(new Vector3(0, 0, 0)); // 相机原点为
 
-    // 定义一个材质
-    const groundMaterial = new StandardMaterial("ground material", scene);
-    // 给材质附上纹理
-    groundMaterial.diffuseTexture = new Texture(grassTextureUrl, scene);
-    // 给ground附上定义的材质
-    ground.material = groundMaterial;
+    camera.lowerBetaLimit = 0.5;   // 旋转角度最低限制
+    camera.upperBetaLimit = (Math.PI / 2) * 0.95; // 旋转角度最高限制
+    camera.lowerRadiusLimit = 50;   // 相机半径最低限制
+    camera.upperRadiusLimit = 200;  // 相机半径最高限制
+    camera.useAutoRotationBehavior = true;// 摄像机自动旋转
 
-    // const boxMaterial = new StandardMaterial('box material', scene);
+    camera.attachControl(canvas, true);
 
-    // boxMaterial.diffuseColor = new Color3(1, 0, 1);
-    // boxMaterial.specularColor = new Color3(0.5, 0.6, 0.87);
-    // boxMaterial.emissiveColor = new Color3(1, 1, 1);
-    // boxMaterial.ambientColor = new Color3(0.23, 0.98, 0.53);
+    // 给相机挂动画
+    const animationCamera = new Animation("tutoAnimation", "radius", 30, Animation.ANIMATIONTYPE_FLOAT, Animation.ANIMATIONLOOPMODE_CONSTANT);
 
-    // box.material = boxMaterial;
-
-
-    // // Create a particle system
-    // var particleSystem = new ParticleSystem("particles", 2000, scene);
-
-    // //Texture of each particle
-    // particleSystem.particleTexture = new Texture(grassTextureUrl, scene);
-
-    // // Where the particles come from
-    // particleSystem.emitter = box; // the starting object, the emitter
-    // particleSystem.minEmitBox = new Vector3(-1, 0, 0); // Starting all from
-    // particleSystem.maxEmitBox = new Vector3(1, 0, 0); // To...
-
-    // // Colors of all particles
-    // particleSystem.color1 = new Color4(0.7, 0.8, 1.0, 1.0);
-    // particleSystem.color2 = new Color4(0.2, 0.5, 1.0, 1.0);
-    // particleSystem.colorDead = new Color4(0, 0, 0.2, 0.0);
-
-    // // Size of each particle (random between...
-    // particleSystem.minSize = 0.1;
-    // particleSystem.maxSize = 0.5;
-
-    // // Life time of each particle (random between...
-    // particleSystem.minLifeTime = 0.3;
-    // particleSystem.maxLifeTime = 1.5;
-
-    // // Emission rate
-    // particleSystem.emitRate = 1500;
-    const importResult = await SceneLoader.ImportMeshAsync(
-      "",
-      "",
-      controllerModel,
-      scene,
-      undefined,
-      ".glb"
-    );
-    importResult.meshes[2].rotation = new Vector3(0, 1.6 * Math.PI, 0)
-    console.log(importResult)
-    camera.lockedTarget = importResult.meshes[0];
-    // // Blend mode : BLENDMODE_ONEONE, or BLENDMODE_STANDARD
-    // particleSystem.blendMode = ParticleSystem.BLENDMODE_ONEONE;
-
-    // // Set the gravity of all particles
-    // particleSystem.gravity = new Vector3(0, -9.81, 0);
-
-    // // Direction of each particle after it has been emitted
-    // particleSystem.direction1 = new Vector3(-7, 8, 3);
-    // particleSystem.direction2 = new Vector3(7, 8, -3);
-
-    // // Angular speed, in radians
-    // particleSystem.minAngularSpeed = 0;
-    // particleSystem.maxAngularSpeed = Math.PI;
-
-    // // Speed
-    // particleSystem.minEmitPower = 1;
-    // particleSystem.maxEmitPower = 3;
-    // particleSystem.updateSpeed = 0.005;
-
-    // // Start the particle system
-    // particleSystem.start();
-    var keys = [];
-    var animation = new Animation("animation", "rotation.x", 30, Animation.ANIMATIONTYPE_FLOAT,
-      Animation.ANIMATIONLOOPMODE_CYCLE);
-    // At the animation key 0, the value of scaling is "1"
+    // Animation keys
+    let keys = [];
+    // 动画第0帧的值
     keys.push({
       frame: 0,
-      value: 0
+      value: 50
     });
-
-    // At the animation key 50, the value of scaling is "0.2"
+    // 动画第100帧的值
     keys.push({
       frame: 50,
-      value: Math.PI
+      value: 200
     });
 
-    // At the animation key 100, the value of scaling is "1"
-    keys.push({
-      frame: 100,
-      value: 0
-    });
+    // 给相机挂上动画
+    animationCamera.setKeys(keys);
 
-    // Launch animation
-    animation.setKeys(keys);
-    // box.animations.push(animation);
-    // scene.beginAnimation(box, 0, 100, true);
-    // setTimeout(() => {
-    //   scene.beginAnimation(box, 100, 0, true);
-    // }, 2000);
+    const easingFunction = new CircleEase();
 
-    //Set gravity for the scene (G force like, on Y-axis)
-    // scene.gravity = new Vector3(0, -0.9, 0);
+    // For each easing function, you can choose beetween EASEIN (default), EASEOUT, EASEINOUT
+    easingFunction.setEasingMode(EasingFunction.EASINGMODE_EASEOUT);
 
-    // Enable Collisions
-    scene.collisionsEnabled = true;
+    // Adding easing function to my animation
+    animationCamera.setEasingFunction(easingFunction);
 
-    //Then apply collisions and gravity to the active camera
-    // camera.checkCollisions = true;
-    // //finally, say which mesh will be collisionable
-    // camera.collisionRadius = new Vector3(0.5, 0.5, 0.5)
-    // ground.checkCollisions = true;
-    // box.checkCollisions = true;
+    camera.animations.push(animationCamera);
+
+    // var camera = new FollowCamera("FollowCam", new Vector3(0, 0, 0), scene);
+
+    // // 相机到目标的距离
+    // camera.radius = 10;
+
+    // // 相机的目标高度高于目标的原点
+    // camera.heightOffset = 10;
+
+    // // 摄像机绕xy绕目标原点旋转
+    // camera.rotationOffset = Math.PI/2;
+
+    // // 当前位置到目标位置的加速度
+    // camera.cameraAcceleration = 0.005
+
+    // // 停止加速的速度
+    // camera.maxCameraSpeed = 5
+
+    // // This attaches the camera to the canvas
+    // camera.attachControl(canvas, true);
+
+    /****************************** 创建光源 ********************************/
+    const light = new HemisphericLight("light", new Vector3(0, 1, 0), scene);
+    // 光源亮度 0-1
+    light.intensity = 1;
+
+    /****************************** 材质部分 ********************************/
+    // 定义x光材质
+    const xray_mat = await xary(scene);
+
+    /****************************** 地形部分(房间) ********************************/
+    const ground = await Ground(scene);
+    // 加载x光材质，变为透视
+    ground.meshes.forEach(mesh => {
+      mesh.material = xray_mat;
+    })
+
+    /****************************** 渲染机柜 ********************************/
+    // let cabinetsPosition:Vector3[] = Array[];
+    let cabinetTotal: number = 30;
+    let cabinets = [];
+    for (let key of new Array(cabinetTotal)) {
+      cabinets.push(await Cabinet(scene));
+    }
+
+    let rowTotal: number = 10;
+    cabinets.forEach((cabinet, index) => {
+      let x = Math.floor(index / rowTotal);
+      let y = Math.floor(index % rowTotal);
+      console.log(cabinet)
+
+      // 每行10个按照一半分开
+      if (y >= rowTotal / 2) {
+        y += 2
+      }
+
+      // 设定每个机柜的原点
+      const origin = new Vector3(x * 60 - 70, 0, y * 12.1 - 65);
+
+      // 机柜应用原点
+      cabinet.meshes[0].position = origin;
+
+
+      // 注册事件
+      let cabinetMesh = cabinet.meshes[0]
+      cabinet.meshes.forEach(mesh => {
+        mesh.isPickable = true; // 开启pick
+        mesh.actionManager = new ActionManager(scene);
+        mesh.actionManager.registerAction(new ExecuteCodeAction(
+          ActionManager.OnDoublePickTrigger, (function (mesh: any) {
+            console.log("%c ActionManager: long press : " + mesh.name, 'background: green; color: white');
+          }).bind(this, mesh)));
+      })
+      // cabinetMesh.actionManager = new ActionManager(scene);
+      // cabinetMesh.actionManager.registerAction(new ExecuteCodeAction(
+      //   ActionManager.OnPointerOverTrigger, (function () {
+      //     console.log(321321)
+      //     // console.log("%c ActionManager: long press : " + mesh.name, 'background: green; color: white');
+      //   }).bind(this, cabinetMesh)));
+
+      // cabinet.meshes[1].addRotation(120 / 180 * Math.PI, 0, 0)
+    })
+
+    camera.lockedTarget = ground.meshes[0];
 
     // 加载完毕隐藏loading
     setTimeout(() => {
+      // 隐藏ui后拉远视角
       engine.hideLoadingUI();
+      // 开始相机动画
+      setTimeout(() => {
+        // 相机动画执行
+        scene.beginAnimation(camera, 0, 100, false, undefined, () => {
+          // 相机动画执行完成后 锁定相机最低半径
+          camera.lowerRadiusLimit = 200;   // 相机半径最低限制
+        });
+      }, 300);
     }, 200);
     return scene;
   };
