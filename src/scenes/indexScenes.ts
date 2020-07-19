@@ -1,8 +1,10 @@
+import * as BABYLON from '@babylonjs/core/Legacy/legacy';
 import {Engine} from "@babylonjs/core/Engines/engine";
 import {Scene} from "@babylonjs/core/scene";
 
 // 相机
 import {ArcRotateCamera} from "@babylonjs/core/Cameras/arcRotateCamera";
+import {ArcFollowCamera} from '@babylonjs/core/Cameras/followCamera';
 import {FollowCamera} from "@babylonjs/core/Cameras/followCamera";
 import {UniversalCamera} from '@babylonjs/core/Cameras/universalCamera';
 // 定位
@@ -57,10 +59,11 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
     canvas: HTMLCanvasElement
   ): Promise<Scene> => {
     // 创建一个场景对象
+
     const scene = new Scene(engine);
 
     /****************************** 相机部分 ********************************/
-    const camera = new ArcRotateCamera(
+    let camera: ArcRotateCamera | null = new ArcRotateCamera(
       "my first camera",
       0,
       Math.PI / 3,
@@ -68,6 +71,8 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
       new Vector3(0, 0, 0),
       scene
     );
+    let followCamera: FollowCamera | null = null;
+
     // 设置target到原点
     camera.setTarget(new Vector3(0, 0, 0)); // 相机原点为
 
@@ -108,28 +113,9 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
 
     camera.animations.push(animationCamera);
 
-    // var camera = new FollowCamera("FollowCam", new Vector3(0, 0, 0), scene);
-
-    // // 相机到目标的距离
-    // camera.radius = 10;
-
-    // // 相机的目标高度高于目标的原点
-    // camera.heightOffset = 10;
-
-    // // 摄像机绕xy绕目标原点旋转
-    // camera.rotationOffset = Math.PI/2;
-
-    // // 当前位置到目标位置的加速度
-    // camera.cameraAcceleration = 0.005
-
-    // // 停止加速的速度
-    // camera.maxCameraSpeed = 5
-
-    // // This attaches the camera to the canvas
-    // camera.attachControl(canvas, true);
-
     /****************************** 创建光源 ********************************/
-    const light = new HemisphericLight("light", new Vector3(0, 1, 0), scene);
+    const light = new HemisphericLight("light", new Vector3(100, 100, 0), scene);
+    // const light = new BABYLON.PointLight("pointLight", new BABYLON.Vector3(100, 100, 20), scene);
     // 光源亮度 0-1
     light.intensity = 1;
 
@@ -145,15 +131,23 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
     })
 
     /****************************** 渲染机柜 ********************************/
-    let cabinetTotal: number = 30;
+    let data: number[] = (new Array(30)).map((item, index) => index);
     let cabinets = [];
+    console.log(data)
 
-    for (let key of new Array(cabinetTotal)) {
-      cabinets.push(await Cabinet(scene));
+    for (let i = 0; i < data.length; i++) {
+      let cabinet = await Cabinet(scene);
+      cabinets.push({
+        data: data[i],
+        cabinet
+      });
     }
 
     let rowTotal: number = 10;
-    cabinets.forEach((cabinet, index) => {
+    let isFollow = false;
+
+    let navigateStack: any = [];
+    cabinets.forEach(({data, cabinet}, index) => {
       let x = Math.floor(index / rowTotal);
       let y = Math.floor(index % rowTotal);
 
@@ -163,22 +157,131 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
       }
 
       // 机柜定位
-      cabinet.meshes[0].position = new Vector3(x * 60 - 70, 0, y * 12.1 - 65);
+      cabinet.meshes[0].position = new Vector3(x * 60 - 80, 20, y * 12.1 - 65);
 
       // 注册事件
       // let cabinetMesh = cabinet.meshes[0]
       cabinet.meshes.forEach(mesh => {
-        console.log(mesh.isPickable)
-        mesh.isPickable = true; // 开启pick
         mesh.actionManager = new ActionManager(scene);
-        mesh.actionManager.registerAction(new ExecuteCodeAction(
-          ActionManager.OnLeftPickTrigger, (function (mesh: any) {
-            console.log(123)
-            // console.log("%c ActionManager: long press : " + mesh.name, 'background: green; color: white');
-          }).bind(this, mesh)));
+        mesh.actionManager.registerAction(
+          // 这里是一个bug 不能用直接用导出的模块ExecuteCodeAction 需要使用BABYLON.ExecuteCodeAction
+          new BABYLON.ExecuteCodeAction(
+            ActionManager.OnLeftPickTrigger,
+            (mesh: any) => {
+              console.log(123, mesh, data)
+              // ArcFollowCamera
+              if (!isFollow) {
+                isFollow = true;
+                camera && (camera.useAutoRotationBehavior = false);// 摄像机自动旋转
+                if (!followCamera) {
+                  followCamera = new FollowCamera("FollowCam", new Vector3(0, 0, 0), scene);
+                }
+                // 当前位置到目标位置的加速度
+                followCamera.cameraAcceleration = 0.05
+
+                // 停止加速的速度
+                followCamera.maxCameraSpeed = 3
+
+                camera && (followCamera.position = camera.position);
+
+                followCamera.radius = 53;
+                // 相机的目标高度高于目标的原点
+                followCamera.heightOffset = 0;
+
+                // 摄像机绕xy绕目标原点旋转
+                followCamera.rotationOffset = -90;
+
+
+                followCamera.lockedTarget = cabinet.meshes[0];
+
+                // 打开柜子门
+                cabinet.meshes[3].addRotation(0, 120 / 180 * Math.PI, 0);
+
+                // cabinet.meshes.forEach(m => {
+                //   m.material = xray_mat;
+                // })
+                // // followCamera.
+                // console.log()
+                navigateStack.push(cabinet);
+                scene.activeCameras.pop();
+                scene.activeCameras.push(followCamera);
+              }
+
+              // 先解开相机限制
+              // camera.lowerRadiusLimit = 50;
+              // camera.lockedTarget = cabinet.meshes[0];
+              // // camera.lockedTarget = cabinet.meshes[0];
+              // camera.useAutoRotationBehavior = false; // 相机停止转动
+              // camera.radius = 50;
+              // camera.alpha = 0;
+              // camera.beta = 0;
+              // camera.target._z = 20;
+              // camera.rotation = new Vector3(0, 0, 0)
+              // // 相机到目标的距离
+              // followCamera.radius = 100;
+
+              // console.log("%c ActionManager: long press : " + mesh.name, 'background: green; color: white');
+            }));
       })
-      // cabinet.meshes[1].addRotation(120 / 180 * Math.PI, 0, 0)
     })
+
+    // 键盘事件
+    scene.actionManager = new ActionManager(scene);
+    scene.actionManager.registerAction(new BABYLON.ExecuteCodeAction(ActionManager.OnKeyDownTrigger, function (evt) {
+      if (evt.sourceEvent.key === 'Escape') {
+        let mesh = navigateStack.pop();
+        if (mesh.meshes.length === 4) {
+          let cabinet = mesh;
+          if (followCamera) {
+            followCamera.radius = 200;
+
+            // 相机的目标高度高于目标的原点
+            followCamera.heightOffset = 90;
+
+            // 摄像机绕xy绕目标原点旋转
+            followCamera.rotationOffset = -90;
+
+            followCamera.lockedTarget = ground.meshes[0];
+
+            setTimeout(() => {
+              isFollow = false;
+              // 柜子关门
+              cabinet.meshes[3].addRotation(0, -120 / 180 * Math.PI, 0);
+              followCamera = null;
+            }, 1000);
+          }
+
+
+
+
+          setTimeout(() => {
+            // 切换主相机
+            scene.activeCameras.pop();
+            if (!camera) {
+              camera = new ArcRotateCamera(
+                "my first camera",
+                0,
+                Math.PI / 3,
+                50,   // 相机半径
+                new Vector3(0, 0, 0),
+                scene
+              );
+
+              // 设置target到原点
+              camera.setTarget(new Vector3(0, 0, 0)); // 相机原点为
+
+              camera.lowerBetaLimit = 0.5;   // 旋转角度最低限制
+              camera.upperBetaLimit = (Math.PI / 2) * 0.95; // 旋转角度最高限制
+              camera.lowerRadiusLimit = 50;   // 相机半径最低限制
+              camera.upperRadiusLimit = 200;  // 相机半径最高限制
+            }
+            scene.activeCameras.push(camera)
+            camera.alpha = 0;
+            camera.useAutoRotationBehavior = true;
+          }, 1000);
+        }
+      }
+    }));
 
     camera.lockedTarget = ground.meshes[0];
 
@@ -191,7 +294,7 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
         // 相机动画执行
         scene.beginAnimation(camera, 0, 100, false, undefined, () => {
           // 相机动画执行完成后 锁定相机最低半径
-          camera.lowerRadiusLimit = 200;   // 相机半径最低限制
+          camera && (camera.lowerRadiusLimit = 200);   // 相机半径最低限制
         });
       }, 300);
     }, 200);

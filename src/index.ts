@@ -25,7 +25,7 @@ export const babylonInit = async (): Promise<Engine> => {
   const engine = new Engine(canvas, true);
 
   // loading加在引擎上
-  const loadingScreen: ILoadingScreen = new LoadingScreen('loadiung');
+  const loadingScreen: ILoadingScreen = new LoadingScreen('loading');
   engine.loadingScreen = loadingScreen;
 
   //创建场景前开启loading
