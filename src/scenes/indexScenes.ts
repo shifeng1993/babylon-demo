@@ -176,8 +176,9 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
         mesh.isPickable = true; // 开启pick
         mesh.actionManager = new ActionManager(scene);
         mesh.actionManager.registerAction(new ExecuteCodeAction(
-          ActionManager.OnDoublePickTrigger, (function (mesh: any) {
-            console.log("%c ActionManager: long press : " + mesh.name, 'background: green; color: white');
+          ActionManager.OnLeftPickTrigger, (function (mesh: any) {
+            console.log(123)
+            // console.log("%c ActionManager: long press : " + mesh.name, 'background: green; color: white');
           }).bind(this, mesh)));
       })
       // cabinetMesh.actionManager = new ActionManager(scene);

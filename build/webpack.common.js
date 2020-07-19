@@ -14,7 +14,10 @@ module.exports = {
     filename: 'js/babylonBundle.js',
   },
   resolve: {
-    extensions: ['.ts', '.js']
+    extensions: ['.ts', '.js'],
+    alias: {
+      'ammo.js': path.join(appDirectory, 'assets', 'lib', 'ammo.js')
+    }
   },
   module: {
     rules: [
