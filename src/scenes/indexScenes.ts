@@ -185,6 +185,7 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
                 camera && (followCamera.position = camera.position);
 
                 followCamera.radius = 53;
+
                 // 相机的目标高度高于目标的原点
                 followCamera.heightOffset = 0;
 
@@ -233,10 +234,10 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
         if (mesh.meshes.length === 4) {
           let cabinet = mesh;
           if (followCamera) {
-            followCamera.radius = 200;
+            followCamera.radius = 170;
 
             // 相机的目标高度高于目标的原点
-            followCamera.heightOffset = 90;
+            followCamera.heightOffset = 104;
 
             // 摄像机绕xy绕目标原点旋转
             followCamera.rotationOffset = -90;
@@ -247,38 +248,38 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
               isFollow = false;
               // 柜子关门
               cabinet.meshes[3].addRotation(0, -120 / 180 * Math.PI, 0);
-              followCamera = null;
-            }, 1000);
+              setTimeout(() => {
+                // 切换主相机
+
+                console.log(followCamera)
+                if (!camera) {
+                  camera = new ArcRotateCamera(
+                    "my first camera",
+                    0,
+                    Math.PI / 3,
+                    followCamera?.radius || 50,   // 相机半径
+                    new Vector3(0, 0, 0),
+                    scene
+                  );
+
+                  camera.lowerBetaLimit = 0.5;   // 旋转角度最低限制
+                  camera.upperBetaLimit = (Math.PI / 2) * 0.95; // 旋转角度最高限制
+                  camera.lowerRadiusLimit = 50;   // 相机半径最低限制
+                  camera.upperRadiusLimit = 200;  // 相机半径最高限制
+                }
+                followCamera = null;
+                scene.activeCameras.pop();
+                scene.activeCameras.push(camera)
+                camera.alpha = 0;
+                camera.useAutoRotationBehavior = true;
+              }, 1200);
+            }, 0);
           }
 
 
 
 
-          setTimeout(() => {
-            // 切换主相机
-            scene.activeCameras.pop();
-            if (!camera) {
-              camera = new ArcRotateCamera(
-                "my first camera",
-                0,
-                Math.PI / 3,
-                50,   // 相机半径
-                new Vector3(0, 0, 0),
-                scene
-              );
 
-              // 设置target到原点
-              camera.setTarget(new Vector3(0, 0, 0)); // 相机原点为
-
-              camera.lowerBetaLimit = 0.5;   // 旋转角度最低限制
-              camera.upperBetaLimit = (Math.PI / 2) * 0.95; // 旋转角度最高限制
-              camera.lowerRadiusLimit = 50;   // 相机半径最低限制
-              camera.upperRadiusLimit = 200;  // 相机半径最高限制
-            }
-            scene.activeCameras.push(camera)
-            camera.alpha = 0;
-            camera.useAutoRotationBehavior = true;
-          }, 1000);
         }
       }
     }));
