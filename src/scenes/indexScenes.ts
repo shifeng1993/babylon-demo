@@ -145,9 +145,9 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
     })
 
     /****************************** 渲染机柜 ********************************/
-    // let cabinetsPosition:Vector3[] = Array[];
     let cabinetTotal: number = 30;
     let cabinets = [];
+
     for (let key of new Array(cabinetTotal)) {
       cabinets.push(await Cabinet(scene));
     }
@@ -156,23 +156,19 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
     cabinets.forEach((cabinet, index) => {
       let x = Math.floor(index / rowTotal);
       let y = Math.floor(index % rowTotal);
-      console.log(cabinet)
 
       // 每行10个按照一半分开
       if (y >= rowTotal / 2) {
         y += 2
       }
 
-      // 设定每个机柜的原点
-      const origin = new Vector3(x * 60 - 70, 0, y * 12.1 - 65);
-
-      // 机柜应用原点
-      cabinet.meshes[0].position = origin;
-
+      // 机柜定位
+      cabinet.meshes[0].position = new Vector3(x * 60 - 70, 0, y * 12.1 - 65);
 
       // 注册事件
-      let cabinetMesh = cabinet.meshes[0]
+      // let cabinetMesh = cabinet.meshes[0]
       cabinet.meshes.forEach(mesh => {
+        console.log(mesh.isPickable)
         mesh.isPickable = true; // 开启pick
         mesh.actionManager = new ActionManager(scene);
         mesh.actionManager.registerAction(new ExecuteCodeAction(
@@ -181,13 +177,6 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
             // console.log("%c ActionManager: long press : " + mesh.name, 'background: green; color: white');
           }).bind(this, mesh)));
       })
-      // cabinetMesh.actionManager = new ActionManager(scene);
-      // cabinetMesh.actionManager.registerAction(new ExecuteCodeAction(
-      //   ActionManager.OnPointerOverTrigger, (function () {
-      //     console.log(321321)
-      //     // console.log("%c ActionManager: long press : " + mesh.name, 'background: green; color: white');
-      //   }).bind(this, cabinetMesh)));
-
       // cabinet.meshes[1].addRotation(120 / 180 * Math.PI, 0, 0)
     })
 
