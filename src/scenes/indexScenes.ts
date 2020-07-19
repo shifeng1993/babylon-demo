@@ -133,7 +133,6 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
     /****************************** 渲染机柜 ********************************/
     let data: number[] = (new Array(30)).map((item, index) => index);
     let cabinets = [];
-    console.log(data)
 
     for (let i = 0; i < data.length; i++) {
       let cabinet = await Cabinet(scene);
@@ -147,6 +146,7 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
     let isFollow = false;
 
     let navigateStack: any = [];
+    let hoverActive: any = [];
     cabinets.forEach(({data, cabinet}, index) => {
       let x = Math.floor(index / rowTotal);
       let y = Math.floor(index % rowTotal);
@@ -163,12 +163,14 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
       // let cabinetMesh = cabinet.meshes[0]
       cabinet.meshes.forEach(mesh => {
         mesh.actionManager = new ActionManager(scene);
+
+        // 注册左键单击事件
         mesh.actionManager.registerAction(
           // 这里是一个bug 不能用直接用导出的模块ExecuteCodeAction 需要使用BABYLON.ExecuteCodeAction
           new BABYLON.ExecuteCodeAction(
             ActionManager.OnLeftPickTrigger,
             (mesh: any) => {
-              console.log(123, mesh, data)
+              // console.log(123, mesh, data)
               // ArcFollowCamera
               if (!isFollow) {
                 isFollow = true;
@@ -223,6 +225,32 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
 
               // console.log("%c ActionManager: long press : " + mesh.name, 'background: green; color: white');
             }));
+
+
+        // 注册鼠标移入
+        mesh.actionManager.registerAction(
+          // 这里是一个bug 不能用直接用导出的模块ExecuteCodeAction 需要使用BABYLON.ExecuteCodeAction
+          new BABYLON.ExecuteCodeAction(
+            ActionManager.OnPointerOverTrigger,
+            (mesh: any) => {
+              if (!isFollow && hoverActive.length == 0) {
+
+                console.log(321312)
+                hoverActive.push(1)
+              }
+            }));
+        // 鼠标划出
+        mesh.actionManager.registerAction(
+          // 这里是一个bug 不能用直接用导出的模块ExecuteCodeAction 需要使用BABYLON.ExecuteCodeAction
+          new BABYLON.ExecuteCodeAction(
+            ActionManager.OnPointerOutTrigger,
+            (mesh: any) => {
+              if (!isFollow && hoverActive.length != 0) {
+
+                console.log('out')
+                hoverActive.pop()
+              }
+            }));
       })
     })
 
@@ -251,7 +279,6 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
               setTimeout(() => {
                 // 切换主相机
 
-                console.log(followCamera)
                 if (!camera) {
                   camera = new ArcRotateCamera(
                     "my first camera",
