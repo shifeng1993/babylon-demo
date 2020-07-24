@@ -52,7 +52,7 @@ module.exports = {
         loader: 'ts-loader'
       },
       {
-        test: /\.(png|jpg|gif|env|glb|stl|babylon)$/i,
+        test: /\.(png|jpg|gif|env|glb|gltf|stl|babylon)$/i,
         use: [{
           loader: 'url-loader',
           options: {

@@ -4,9 +4,7 @@ import {Scene} from "@babylonjs/core/scene";
 
 // 相机
 import {ArcRotateCamera} from "@babylonjs/core/Cameras/arcRotateCamera";
-import {ArcFollowCamera} from '@babylonjs/core/Cameras/followCamera';
-import {FollowCamera} from "@babylonjs/core/Cameras/followCamera";
-import {UniversalCamera} from '@babylonjs/core/Cameras/universalCamera';
+
 // 定位
 import {Vector3} from "@babylonjs/core/Maths/math.vector";
 // 光源
@@ -32,7 +30,7 @@ import {ActionManager} from '@babylonjs/core/Actions/actionManager';
 import {ExecuteCodeAction} from '@babylonjs/core/Actions/directActions';
 // 粒子系统
 import {ParticleSystem} from '@babylonjs/core/Particles';
-
+import {GUI3DManager, SpherePanel, HolographicButton} from '@babylonjs/gui';
 
 import {CreateSceneClass} from "../createScene";
 
@@ -52,6 +50,7 @@ import {Cabinet} from '../components/mode/Cabinet';  // 机柜
 
 import xary from '../components/materials/xray';  // x光材质
 
+import {moveArcRotateCamera} from '../utils';
 export class DefaultSceneWithTexture implements CreateSceneClass {
 
   createScene = async (
@@ -62,8 +61,9 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
 
     const scene = new Scene(engine);
 
+    let allowEvent: boolean = false; // 是否允许事件
     /****************************** 相机部分 ********************************/
-    let camera: ArcRotateCamera | null = new ArcRotateCamera(
+    const camera: ArcRotateCamera = new ArcRotateCamera(
       "my first camera",
       0,
       Math.PI / 3,
@@ -71,7 +71,6 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
       new Vector3(0, 0, 0),
       scene
     );
-    let followCamera: FollowCamera | null = null;
 
     // 设置target到原点
     camera.setTarget(new Vector3(0, 0, 0)); // 相机原点为
@@ -81,43 +80,15 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
     camera.lowerRadiusLimit = 50;   // 相机半径最低限制
     camera.upperRadiusLimit = 200;  // 相机半径最高限制
     camera.useAutoRotationBehavior = true;// 摄像机自动旋转
+    camera.useFramingBehavior = true;
 
     camera.attachControl(canvas, true);
-
-    // 给相机挂动画
-    const animationCamera = new Animation("tutoAnimation", "radius", 30, Animation.ANIMATIONTYPE_FLOAT, Animation.ANIMATIONLOOPMODE_CONSTANT);
-
-    // Animation keys
-    let keys = [];
-    // 动画第0帧的值
-    keys.push({
-      frame: 0,
-      value: 50
-    });
-    // 动画第100帧的值
-    keys.push({
-      frame: 50,
-      value: 200
-    });
-
-    // 给相机挂上动画
-    animationCamera.setKeys(keys);
-
-    const easingFunction = new CircleEase();
-
-    // For each easing function, you can choose beetween EASEIN (default), EASEOUT, EASEINOUT
-    easingFunction.setEasingMode(EasingFunction.EASINGMODE_EASEOUT);
-
-    // Adding easing function to my animation
-    animationCamera.setEasingFunction(easingFunction);
-
-    camera.animations.push(animationCamera);
 
     /****************************** 创建光源 ********************************/
     const light = new HemisphericLight("light", new Vector3(100, 100, 0), scene);
     // const light = new BABYLON.PointLight("pointLight", new BABYLON.Vector3(100, 100, 20), scene);
     // 光源亮度 0-1
-    light.intensity = 1;
+    light.intensity = 0.4;
 
     /****************************** 材质部分 ********************************/
     // 定义x光材质
@@ -142,11 +113,14 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
       });
     }
 
+
+
     let rowTotal: number = 10;
     let isFollow = false;
 
     let navigateStack: any = [];
     let hoverActive: any = [];
+    let cabinetDefaultMaterial: BABYLON.Material | null;
     cabinets.forEach(({data, cabinet}, index) => {
       let x = Math.floor(index / rowTotal);
       let y = Math.floor(index % rowTotal);
@@ -168,62 +142,47 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
         mesh.actionManager.registerAction(
           // 这里是一个bug 不能用直接用导出的模块ExecuteCodeAction 需要使用BABYLON.ExecuteCodeAction
           new BABYLON.ExecuteCodeAction(
-            ActionManager.OnLeftPickTrigger,
+            ActionManager.OnDoublePickTrigger,
             (mesh: any) => {
-              // console.log(123, mesh, data)
-              // ArcFollowCamera
+              if (!allowEvent) return
+
               if (!isFollow) {
                 isFollow = true;
-                camera && (camera.useAutoRotationBehavior = false);// 摄像机自动旋转
-                if (!followCamera) {
-                  followCamera = new FollowCamera("FollowCam", new Vector3(0, 0, 0), scene);
-                }
-                // 当前位置到目标位置的加速度
-                followCamera.cameraAcceleration = 0.05
 
-                // 停止加速的速度
-                followCamera.maxCameraSpeed = 3
+                // 关闭摄像机自动旋转
+                camera.useAutoRotationBehavior = false
+                // 先解开相机限制
+                camera.lowerRadiusLimit = 55;
 
-                camera && (followCamera.position = camera.position);
+                // 锁定中心点物体
+                camera.lockedTarget = cabinet.meshes[0];
 
-                followCamera.radius = 53;
+                // 打开柜子门 绕着Y轴旋转 120度
+                cabinet.meshes[3].rotate(BABYLON.Axis.Y, 120 / 180 * Math.PI, BABYLON.Space.LOCAL);
 
-                // 相机的目标高度高于目标的原点
-                followCamera.heightOffset = 0;
+                // 加载x光材质，变为透视
+                cabinet.meshes.forEach((mesh, index) => {
+                  if (index === 3) {
+                    console.log(mesh.material)
+                    console.log(xray_mat)
+                    cabinetDefaultMaterial = mesh.material;
+                  }
+                  mesh.material = xray_mat;
+                })
 
-                // 摄像机绕xy绕目标原点旋转
-                followCamera.rotationOffset = -90;
+                let alpha = (camera.alpha > 0) ? Math.floor(camera.alpha / (Math.PI * 2)) * (Math.PI * 2) : Math.ceil(camera.alpha / (Math.PI * 2)) * (Math.PI * 2)
 
+                // 移动相机视角
+                moveArcRotateCamera(camera, cabinet.meshes[0].position, 55, alpha, Math.PI / 2, 2, scene, () => {
+                  // 完成相机平滑转换视角后锁定相机
+                  camera.lowerBetaLimit = Math.PI / 2;
+                  camera.upperRadiusLimit = 55;
+                  camera.lowerAlphaLimit = 0;
+                  camera.upperAlphaLimit = 0;
 
-                followCamera.lockedTarget = cabinet.meshes[0];
-
-                // 打开柜子门
-                cabinet.meshes[3].addRotation(0, 120 / 180 * Math.PI, 0);
-
-                // cabinet.meshes.forEach(m => {
-                //   m.material = xray_mat;
-                // })
-                // // followCamera.
-                // console.log()
-                navigateStack.push(cabinet);
-                scene.activeCameras.pop();
-                scene.activeCameras.push(followCamera);
+                  navigateStack.push(cabinet);
+                })
               }
-
-              // 先解开相机限制
-              // camera.lowerRadiusLimit = 50;
-              // camera.lockedTarget = cabinet.meshes[0];
-              // // camera.lockedTarget = cabinet.meshes[0];
-              // camera.useAutoRotationBehavior = false; // 相机停止转动
-              // camera.radius = 50;
-              // camera.alpha = 0;
-              // camera.beta = 0;
-              // camera.target._z = 20;
-              // camera.rotation = new Vector3(0, 0, 0)
-              // // 相机到目标的距离
-              // followCamera.radius = 100;
-
-              // console.log("%c ActionManager: long press : " + mesh.name, 'background: green; color: white');
             }));
 
 
@@ -234,8 +193,8 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
             ActionManager.OnPointerOverTrigger,
             (mesh: any) => {
               if (!isFollow && hoverActive.length == 0) {
-
-                console.log(321312)
+                camera.useAutoRotationBehavior = false;// 摄像机自动旋转
+                // console.log(321312)
                 hoverActive.push(1)
               }
             }));
@@ -247,7 +206,8 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
             (mesh: any) => {
               if (!isFollow && hoverActive.length != 0) {
 
-                console.log('out')
+                camera.useAutoRotationBehavior = true;// 摄像机自动旋转
+                // console.log('out')
                 hoverActive.pop()
               }
             }));
@@ -255,59 +215,46 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
     })
 
     // 键盘事件
+    let esc = false;
     scene.actionManager = new ActionManager(scene);
     scene.actionManager.registerAction(new BABYLON.ExecuteCodeAction(ActionManager.OnKeyDownTrigger, function (evt) {
-      if (evt.sourceEvent.key === 'Escape') {
-        let mesh = navigateStack.pop();
-        if (mesh.meshes.length === 4) {
-          let cabinet = mesh;
-          if (followCamera) {
-            followCamera.radius = 170;
+      if (evt.sourceEvent.key === 'Escape' && !esc) {
+        esc = true;
+        allowEvent = false;
+        let cabinet = navigateStack[navigateStack.length - 1];
+        if (cabinet && cabinet.meshes.length === 4) {
+          console.log(12312321312)
+          isFollow = false;
 
-            // 相机的目标高度高于目标的原点
-            followCamera.heightOffset = 104;
+          camera.lowerBetaLimit = 0.5;   // 旋转角度最低限制
+          camera.upperBetaLimit = (Math.PI / 2) * 0.95; // 旋转角度最高限制
+          camera.lowerAlphaLimit = null;
+          camera.upperAlphaLimit = null;
+          camera.lowerRadiusLimit = 50;   // 相机半径最低限制
+          camera.upperRadiusLimit = 200;  // 相机半径最高限制
 
-            // 摄像机绕xy绕目标原点旋转
-            followCamera.rotationOffset = -90;
+          // 柜子关门 绕着Y轴旋转 -120度
+          cabinet.meshes[3].rotate(BABYLON.Axis.Y, -120 / 180 * Math.PI, BABYLON.Space.LOCAL);
 
-            followCamera.lockedTarget = ground.meshes[0];
+          cabinet.meshes.forEach((mesh: AbstractMesh) => {
+            mesh.material = cabinetDefaultMaterial;
+          })
 
-            setTimeout(() => {
-              isFollow = false;
-              // 柜子关门
-              cabinet.meshes[3].addRotation(0, -120 / 180 * Math.PI, 0);
-              setTimeout(() => {
-                // 切换主相机
+          camera.lockedTarget = ground.meshes[0];
+          moveArcRotateCamera(camera, ground.meshes[0].position, 200, 0, Math.PI / 3, 2, scene, () => {
+            // 完成相机平滑转换视角后锁定相机
+            camera.lowerRadiusLimit = 200
+            camera.useAutoRotationBehavior = true;// 摄像机自动旋转
+            camera.useFramingBehavior = true;
 
-                if (!camera) {
-                  camera = new ArcRotateCamera(
-                    "my first camera",
-                    0,
-                    Math.PI / 3,
-                    followCamera?.radius || 50,   // 相机半径
-                    new Vector3(0, 0, 0),
-                    scene
-                  );
-
-                  camera.lowerBetaLimit = 0.5;   // 旋转角度最低限制
-                  camera.upperBetaLimit = (Math.PI / 2) * 0.95; // 旋转角度最高限制
-                  camera.lowerRadiusLimit = 50;   // 相机半径最低限制
-                  camera.upperRadiusLimit = 200;  // 相机半径最高限制
-                }
-                followCamera = null;
-                scene.activeCameras.pop();
-                scene.activeCameras.push(camera)
-                camera.alpha = 0;
-                camera.useAutoRotationBehavior = true;
-              }, 1200);
-            }, 0);
-          }
-
-
-
-
+            navigateStack.pop();
+            allowEvent = true;
+          })
 
         }
+        setTimeout(() => {
+          esc = false;
+        }, 500);
       }
     }));
 
@@ -319,12 +266,14 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
       engine.hideLoadingUI();
       // 开始相机动画
       setTimeout(() => {
-        // 相机动画执行
-        scene.beginAnimation(camera, 0, 100, false, undefined, () => {
-          // 相机动画执行完成后 锁定相机最低半径
-          camera && (camera.lowerRadiusLimit = 200);   // 相机半径最低限制
-        });
-      }, 300);
+        moveArcRotateCamera(camera, ground.meshes[0].position, 200, camera.alpha, camera.beta, 1, scene, () => {
+          // 完成相机平滑转换视角后锁定相机
+          camera.lowerRadiusLimit = 200
+
+          // 打开全局事件监听
+          allowEvent = true;
+        })
+      }, 200);
     }, 200);
     return scene;
   };
