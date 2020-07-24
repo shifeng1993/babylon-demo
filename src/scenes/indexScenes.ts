@@ -74,7 +74,7 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
     camera.setTarget(new Vector3(0, 0, 0)); // 相机原点为
 
     camera.lowerBetaLimit = 0.5;   // 旋转角度最低限制
-    // camera.upperBetaLimit = (Math.PI / 2) * 0.95; // 旋转角度最高限制
+    camera.upperBetaLimit = (Math.PI / 2) * 0.95; // 旋转角度最高限制
     camera.lowerRadiusLimit = 50;   // 相机半径最低限制
     camera.upperRadiusLimit = 200;  // 相机半径最高限制
     camera.useAutoRotationBehavior = true;// 摄像机自动旋转
@@ -154,7 +154,6 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
 
       serversData.forEach(async (serverData) => {
         let server = await Server(scene, serverData.serverType)
-
         let pos = 2 * (
           serverData.startPos * 0.45   //  起始槽位
         ) + 0.1;
