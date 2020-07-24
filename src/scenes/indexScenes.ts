@@ -14,9 +14,6 @@ import {SpotLight} from "@babylonjs/core/Lights/spotLight";   // 射灯
 import {HemisphericLight} from "@babylonjs/core/Lights/hemisphericLight"; // 半球光
 // 模型
 import {AbstractMesh} from '@babylonjs/core/Meshes/abstractMesh';
-import {SphereBuilder} from "@babylonjs/core/Meshes/Builders/sphereBuilder";
-import {BoxBuilder} from "@babylonjs/core/Meshes/Builders/boxBuilder";
-import {GroundBuilder} from "@babylonjs/core/Meshes/Builders/groundBuilder";
 // 材质
 import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
 import {FresnelParameters} from '@babylonjs/core/Materials/fresnelParameters';
@@ -47,6 +44,7 @@ import {Color4, Color3} from "@babylonjs/core/Maths/math.color";
 
 import {Ground} from '../components/mode/Ground'; // 地面
 import {Cabinet} from '../components/mode/Cabinet';  // 机柜
+import {Server, ServerType} from '../components/mode/Server'; // 服务器
 
 import xary from '../components/materials/xray';  // x光材质
 
@@ -76,7 +74,7 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
     camera.setTarget(new Vector3(0, 0, 0)); // 相机原点为
 
     camera.lowerBetaLimit = 0.5;   // 旋转角度最低限制
-    camera.upperBetaLimit = (Math.PI / 2) * 0.95; // 旋转角度最高限制
+    // camera.upperBetaLimit = (Math.PI / 2) * 0.95; // 旋转角度最高限制
     camera.lowerRadiusLimit = 50;   // 相机半径最低限制
     camera.upperRadiusLimit = 200;  // 相机半径最高限制
     camera.useAutoRotationBehavior = true;// 摄像机自动旋转
@@ -108,7 +106,28 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
     for (let i = 0; i < data.length; i++) {
       let cabinet = await Cabinet(scene);
       cabinets.push({
-        data: data[i],
+        serversData: [
+          {
+            serverId: 1,    // 服务器id
+            serverType: 1,  // 服务器类型 多少U  1 2 4
+            startPos: 1,    // 起始槽位
+          },
+          {
+            serverId: 2,    // 服务器id
+            serverType: 2,  // 服务器类型 多少U  1 2 4
+            startPos: 4,    // 起始槽位
+          },
+          {
+            serverId: 4,    // 服务器id
+            serverType: 2,  // 服务器类型 多少U  1 2 4
+            startPos: 21,   // 起始槽位
+          },
+          {
+            serverId: 3,    // 服务器id
+            serverType: 4,  // 服务器类型 多少U  1 2 4
+            startPos: 39,   // 起始槽位
+          }
+        ],
         cabinet
       });
     }
@@ -121,7 +140,7 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
     let navigateStack: any = [];
     let hoverActive: any = [];
     let cabinetDefaultMaterial: BABYLON.Material | null;
-    cabinets.forEach(({data, cabinet}, index) => {
+    cabinets.forEach(({serversData, cabinet, ...item}, index) => {
       let x = Math.floor(index / rowTotal);
       let y = Math.floor(index % rowTotal);
 
@@ -132,6 +151,17 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
 
       // 机柜定位
       cabinet.meshes[0].position = new Vector3(x * 60 - 80, 20, y * 12.1 - 65);
+
+      serversData.forEach(async (serverData) => {
+        let server = await Server(scene, serverData.serverType)
+
+        let pos = 2 * (
+          serverData.startPos * 0.45   //  起始槽位
+        ) + 0.1;
+        server.meshes[0].position = new Vector3(cabinet.meshes[0].position.x, pos, cabinet.meshes[0].position.z);
+      })
+
+
 
       // 注册事件
       // let cabinetMesh = cabinet.meshes[0]
@@ -163,8 +193,6 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
                 // 加载x光材质，变为透视
                 cabinet.meshes.forEach((mesh, index) => {
                   if (index === 3) {
-                    console.log(mesh.material)
-                    console.log(xray_mat)
                     cabinetDefaultMaterial = mesh.material;
                   }
                   mesh.material = xray_mat;
@@ -223,7 +251,7 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
         allowEvent = false;
         let cabinet = navigateStack[navigateStack.length - 1];
         if (cabinet && cabinet.meshes.length === 4) {
-          console.log(12312321312)
+
           isFollow = false;
 
           camera.lowerBetaLimit = 0.5;   // 旋转角度最低限制

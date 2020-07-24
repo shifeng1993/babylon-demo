@@ -4,7 +4,6 @@
  * @Email: shifeng199307@gmail.com
  * @Date: 2020-07-16 21:39:40
  */
-import * as BABYLON from '@babylonjs/core/Legacy/legacy';
 import {Scene} from "@babylonjs/core/scene";
 import {AbstractMesh} from '@babylonjs/core/Meshes/abstractMesh';
 import {IParticleSystem} from '@babylonjs/core/Particles/IParticleSystem';
@@ -22,12 +21,12 @@ interface Mesh {
   animationGroups: AnimationGroup[];
 }
 export async function Ground(scene: Scene): Promise<Mesh> {
-  return BABYLON.SceneLoader.ImportMeshAsync(
+  return SceneLoader.ImportMeshAsync(
     "",
     "",
     controllerModel,
     scene,
     undefined,
-    ".gltf"
+    ".glb"
   );
 } 
