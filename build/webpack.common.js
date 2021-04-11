@@ -52,12 +52,18 @@ module.exports = {
         loader: 'ts-loader'
       },
       {
-        test: /\.(png|jpg|gif|env|glb|gltf|stl|babylon)$/i,
+        test: /\.(png|jpg|gif)$/i,
         use: [{
           loader: 'url-loader',
           options: {
             limit: 8192,
           },
+        },],
+      },
+      {
+        test: /\.(env|glb|gltf|stl|babylon)$/i,
+        use: [{
+          loader: 'file-loader',
         },],
       }
     ]
@@ -69,8 +75,8 @@ module.exports = {
       template: path.resolve(appDirectory, "public/index.html"),
     }),
   ],
-  // Just for ammo
-  node: {
-    fs: 'empty'
-  }
+  // // Just for ammo
+  // node: {
+  //   fs: 'empty'
+  // }
 }

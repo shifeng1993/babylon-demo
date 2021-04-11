@@ -164,7 +164,7 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
 
       // 注册事件
       // let cabinetMesh = cabinet.meshes[0]
-      cabinet.meshes.forEach(mesh => {
+      cabinet.meshes.forEach((mesh: any) => {
         mesh.actionManager = new ActionManager(scene);
 
         // 注册左键单击事件
@@ -190,7 +190,7 @@ export class DefaultSceneWithTexture implements CreateSceneClass {
                 cabinet.meshes[3].rotate(BABYLON.Axis.Y, 120 / 180 * Math.PI, BABYLON.Space.LOCAL);
 
                 // 加载x光材质，变为透视
-                cabinet.meshes.forEach((mesh, index) => {
+                cabinet.meshes.forEach((mesh: any, index: number) => {
                   if (index === 3) {
                     cabinetDefaultMaterial = mesh.material;
                   }
